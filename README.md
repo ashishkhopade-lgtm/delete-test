@@ -2,6 +2,3 @@
 nbcbj nbdxnv
 bdxlijl 
 bcbjbncknckX
-bdb jhahc
-akdhhcksvcks
-jjksvksjckhv
