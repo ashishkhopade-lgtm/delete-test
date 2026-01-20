@@ -16,16 +16,35 @@ jobs:
       - name: Get Deletion Summary
         id: summary
         run: |
-          # Isse exact deleted lines ka count aur file name milega
-          # $2 deleted lines ka column hota hai, $3 file name ka
-          SUMMARY=$(git diff --numstat HEAD^1 HEAD | awk '$2 > 0 {print $3 " : " $2 " lines removed"}')
+          # 1. Puri tarah delete hui files ki list (Status D)
+          DELETED_FILES=$(git diff --name-status HEAD^1 HEAD | awk '$1 == "D" {print "❌ [DELETED] " $2}')
+          
+          # 2. Files jinmein se sirf lines delete hui hain (lekin file delete nahi hui)
+          # Isme hum un files ko filter kar rahe hain jo 'D' (Deleted) nahi hain
+          LINES_REMOVED=$(git diff --numstat HEAD^1 HEAD | while read added deleted file; do
+            status=$(git diff --name-status HEAD^1 HEAD -- "$file" | awk '{print $1}')
+            if [ "$deleted" -gt 0 ] && [ "$status" != "D" ]; then
+              echo "📉 $file : $deleted lines removed"
+            fi
+          done)
 
-          if [ -z "$SUMMARY" ]; then
-            SUMMARY="No lines were removed in this merge."
+          # Dono ko combine karein
+          FINAL_SUMMARY=""
+          if [ ! -z "$DELETED_FILES" ]; then
+            FINAL_SUMMARY="$DELETED_FILES"
+          fi
+          
+          if [ ! -z "$LINES_REMOVED" ]; then
+            if [ ! -z "$FINAL_SUMMARY" ]; then FINAL_SUMMARY="$FINAL_SUMMARY"$'\n'; fi
+            FINAL_SUMMARY="$FINAL_SUMMARY$LINES_REMOVED"
+          fi
+
+          if [ -z "$FINAL_SUMMARY" ]; then
+            FINAL_SUMMARY="No files or lines were removed."
           fi
 
           echo "diff_summary<<EOF" >> $GITHUB_OUTPUT
-          echo "$SUMMARY" >> $GITHUB_OUTPUT
+          echo "$FINAL_SUMMARY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Send to Google Chat
