@@ -1,2 +1,1 @@
 1]Working on creating a Bash script to automatically whitelist Auth0, VPN, NATS, and office IPs in MongoDB Atlas clusters across all projects (dev, qa, prod, preview, sbx).
-2]Working on resolving Prowler critical alerts for the eb-dev GCP project to ensure HIPAA compliance. 
