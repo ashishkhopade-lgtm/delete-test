@@ -16,9 +16,9 @@ jobs:
       - name: Get Deletion Summary
         id: summary
         run: |
-          # Isse file name aur deleted lines ka count milega
-          # Head^1 is the main branch before merge, Head is after merge
-          SUMMARY=$(git diff --stat HEAD^1 HEAD | grep '|' | awk '{print $1 " : " $5 " lines removed"}')
+          # Isse exact deleted lines ka count aur file name milega
+          # $2 deleted lines ka column hota hai, $3 file name ka
+          SUMMARY=$(git diff --numstat HEAD^1 HEAD | awk '$2 > 0 {print $3 " : " $2 " lines removed"}')
 
           if [ -z "$SUMMARY" ]; then
             SUMMARY="No lines were removed in this merge."
