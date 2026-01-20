@@ -1,0 +1,31 @@
+name: Notify Merge Deletions
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  if_merged:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get Deleted Lines
+        id: diff
+        run: |
+          # Isse sirf removed lines dikhengi
+          DELETED=$(git diff HEAD^1 HEAD | grep '^-' | grep -v '^---' || echo "No lines removed")
+          echo "deleted_content<<EOF" >> $GITHUB_OUTPUT
+          echo "$DELETED" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Send Notification
+        run: |
+          curl --location --request POST '${{ secrets.GOOGLE_CHAT_WEBHOOK }}' \
+          --header 'Content-Type: application/json' \
+          --data-raw "{
+            \"text\": \"✅ *Merge Detected in Main*\\n👤 *Developer:* ${{ github.actor }}\\n🌿 *Branch:* \`${{ github.event.pull_request.head.ref }}\`\\n\\n🗑️ *Lines Removed:*\\n\`\`\`\\n${{ steps.diff.outputs.deleted_content }}\\n\`\`\`\"
+          }"
