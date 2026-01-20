@@ -16,15 +16,16 @@ jobs:
       - name: Get Deletion Summary
         id: summary
         run: |
-          # 1. Puri tarah delete hui files ki list (Status D)
+          # 1. Puri tarah delete hui files ki list
           DELETED_FILES=$(git diff --name-status HEAD^1 HEAD | awk '$1 == "D" {print "❌ [DELETED] " $2}')
           
-          # 2. Files jinmein se sirf lines delete hui hain (lekin file delete nahi hui)
-          # Isme hum un files ko filter kar rahe hain jo 'D' (Deleted) nahi hain
+          # 2. Files jinmein se sirf lines delete hui hain
           LINES_REMOVED=$(git diff --numstat HEAD^1 HEAD | while read added deleted file; do
-            status=$(git diff --name-status HEAD^1 HEAD -- "$file" | awk '{print $1}')
-            if [ "$deleted" -gt 0 ] && [ "$status" != "D" ]; then
-              echo "📉 $file : $deleted lines removed"
+            if [ "$deleted" -gt 0 ]; then
+              status=$(git diff --name-status HEAD^1 HEAD -- "$file" | awk '{print $1}')
+              if [ "$status" != "D" ]; then
+                echo "📉 $file : $deleted lines removed"
+              fi
             fi
           done)
 
@@ -39,15 +40,14 @@ jobs:
             FINAL_SUMMARY="$FINAL_SUMMARY$LINES_REMOVED"
           fi
 
-          if [ -z "$FINAL_SUMMARY" ]; then
-            FINAL_SUMMARY="No files or lines were removed."
-          fi
-
+          # Agar kuch bhi delete nahi hua, toh output empty rahega
           echo "diff_summary<<EOF" >> $GITHUB_OUTPUT
           echo "$FINAL_SUMMARY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Send to Google Chat
+        # YEAH CONDITION CHECK KAREGI: Agar summary empty nahi hai, tabhi notification bhejो
+        if: steps.summary.outputs.diff_summary != ''
         run: |
           COMMIT_URL="https://github.com/${{ github.repository }}/commit/${{ github.sha }}"
 
