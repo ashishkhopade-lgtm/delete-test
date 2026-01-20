@@ -1,4 +1,4 @@
-name: Notify Merge Deletions
+name: Notify File Deletions
 on:
   pull_request:
     types: [closed]
@@ -13,19 +13,27 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get Deleted Lines
-        id: diff
+      - name: Get Deletion Summary
+        id: summary
         run: |
-          # Isse sirf removed lines dikhengi
-          DELETED=$(git diff HEAD^1 HEAD | grep '^-' | grep -v '^---' || echo "No lines removed")
-          echo "deleted_content<<EOF" >> $GITHUB_OUTPUT
-          echo "$DELETED" >> $GITHUB_OUTPUT
+          # Isse file name aur deleted lines ka count milega
+          # Head^1 is the main branch before merge, Head is after merge
+          SUMMARY=$(git diff --stat HEAD^1 HEAD | grep '|' | awk '{print $1 " : " $5 " lines removed"}')
+
+          if [ -z "$SUMMARY" ]; then
+            SUMMARY="No lines were removed in this merge."
+          fi
+
+          echo "diff_summary<<EOF" >> $GITHUB_OUTPUT
+          echo "$SUMMARY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Send Notification
+      - name: Send to Google Chat
         run: |
+          COMMIT_URL="https://github.com/${{ github.repository }}/commit/${{ github.sha }}"
+
           curl --location --request POST '${{ secrets.GOOGLE_CHAT_WEBHOOK }}' \
           --header 'Content-Type: application/json' \
           --data-raw "{
-            \"text\": \"✅ *Merge Detected in Main*\\n👤 *Developer:* ${{ github.actor }}\\n🌿 *Branch:* \`${{ github.event.pull_request.head.ref }}\`\\n\\n🗑️ *Lines Removed:*\\n\`\`\`\\n${{ steps.diff.outputs.deleted_content }}\\n\`\`\`\"
+            \"text\": \"✅ *Merge Summary (Deletions)*\\n👤 *By:* ${{ github.actor }}\\n🌿 *Branch:* \`${{ github.event.pull_request.head.ref }}\`\\n\\n📊 *Files Changed:*\\n\`\`\`\\n${{ steps.summary.outputs.diff_summary }}\\n\`\`\`\\n\\n🔗 *View Detailed Changes:* $COMMIT_URL\"
           }"
